@@ -524,8 +524,6 @@ function TSM:GetOrCreateItemButton(index)
 		btn:SetScript("OnClick", function(self, button)
 			if button == "RightButton" then
 				TSM:ShowContextMenu(self)
-			elseif IsAltKeyDown() and self.itemString then
-				TSM:RemoveTrackedItem(self.itemString)
 			elseif self.itemLink then
 				HandleModifiedItemClick(self.itemLink)
 			end

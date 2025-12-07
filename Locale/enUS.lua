@@ -6,7 +6,6 @@ L["Stocks"] = true
 L["ItemTrackerDisplay"] = true
 L["Item stock display window for TradeSkillMaster."] = true
 L["Alt+Click on any item to add it to the stock display."] = true
-L["Alt+Click on an item in this window to remove it."] = true
 L["Item added to stock display: %s"] = true
 L["Item removed from stock display: %s"] = true
 L["Item already in stock display."] = true
