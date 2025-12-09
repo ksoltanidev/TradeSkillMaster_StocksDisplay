@@ -653,7 +653,10 @@ function TSM:SetupItemButton(btn, itemString, ItemTracker)
 		local playerTotal, altTotal = ItemTracker:GetPlayerTotal(itemString)
 		local guildTotal = ItemTracker:GetGuildTotal(itemString) or 0
 		local auctionTotal = ItemTracker:GetAuctionsTotal(itemString) or 0
-		local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + auctionTotal
+		-- Ascension WoW: Include personal banks and realm bank
+		local personalBanksTotal = ItemTracker:GetPersonalBanksTotal(itemString) or 0
+		local realmBankTotal = ItemTracker:GetRealmBankTotal(itemString) or 0
+		local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + auctionTotal + personalBanksTotal + realmBankTotal
 
 		btn.count:SetText(total > 0 and total or "0")
 	else
