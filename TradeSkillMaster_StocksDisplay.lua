@@ -1,13 +1,13 @@
 -- ------------------------------------------------------------------------------ --
---                      TradeSkillMaster_ItemTrackerDisplay                       --
+--                        TradeSkillMaster_StocksDisplay                          --
 --                                                                                --
 --             A TradeSkillMaster Addon (http://tradeskillmaster.com)             --
 --    All Rights Reserved* - Detailed license information included with addon.   --
 -- ------------------------------------------------------------------------------ --
 
 local TSM = select(2, ...)
-TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TSM_ItemTrackerDisplay", "AceEvent-3.0", "AceConsole-3.0", "AceHook-3.0")
-local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ItemTrackerDisplay")
+TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TSM_StocksDisplay", "AceEvent-3.0", "AceConsole-3.0", "AceHook-3.0")
+local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_StocksDisplay")
 
 -- Constants
 local ICON_SIZE = 32
@@ -28,7 +28,7 @@ local savedDBDefaults = {
 
 function TSM:OnInitialize()
 	-- Load saved variables
-	TSM.db = LibStub("AceDB-3.0"):New("AscensionTSM_ItemTrackerDisplayDB", savedDBDefaults, true)
+	TSM.db = LibStub("AceDB-3.0"):New("AscensionTSM_StocksDisplayDB", savedDBDefaults, true)
 
 	-- Migrate old format (array) to new format (table with groups)
 	TSM:MigrateData()
@@ -83,7 +83,7 @@ function TSM:RegisterModule()
 	TSM.icons = {
 		{
 			side = "module",
-			desc = "ItemTrackerDisplay",
+			desc = "StocksDisplay",
 			slashCommand = "stocks",
 			callback = function() TSM:ToggleWindow() end,
 			icon = "Interface\\Icons\\INV_Misc_Bag_10",
@@ -99,7 +99,7 @@ end
 
 function TSM:CreateStockWindow()
 	-- Main frame
-	local frame = CreateFrame("Frame", "TSMItemTrackerDisplayFrame", UIParent)
+	local frame = CreateFrame("Frame", "TSMStocksDisplayFrame", UIParent)
 	frame:SetFrameStrata("MEDIUM")
 	frame:SetClampedToScreen(true)
 	frame:EnableMouse(true)
@@ -184,7 +184,7 @@ function TSM:CreateStockWindow()
 end
 
 function TSM:CreateGroupDialog()
-	local dialog = CreateFrame("Frame", "TSMItemTrackerDisplayGroupDialog", UIParent)
+	local dialog = CreateFrame("Frame", "TSMStocksDisplayGroupDialog", UIParent)
 	dialog:SetSize(250, 100)
 	dialog:SetPoint("CENTER")
 	dialog:SetFrameStrata("DIALOG")
@@ -240,7 +240,7 @@ function TSM:CreateGroupDialog()
 end
 
 function TSM:CreateDeleteConfirmDialog()
-	local dialog = CreateFrame("Frame", "TSMItemTrackerDisplayDeleteDialog", UIParent)
+	local dialog = CreateFrame("Frame", "TSMStocksDisplayDeleteDialog", UIParent)
 	dialog:SetSize(250, 80)
 	dialog:SetPoint("CENTER")
 	dialog:SetFrameStrata("DIALOG")
@@ -272,7 +272,7 @@ function TSM:CreateDeleteConfirmDialog()
 end
 
 function TSM:CreateContextMenu()
-	local menu = CreateFrame("Frame", "TSMItemTrackerDisplayContextMenu", UIParent, "UIDropDownMenuTemplate")
+	local menu = CreateFrame("Frame", "TSMStocksDisplayContextMenu", UIParent, "UIDropDownMenuTemplate")
 	TSM.contextMenu = menu
 end
 

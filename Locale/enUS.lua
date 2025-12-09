@@ -1,9 +1,9 @@
 -- Locale for English (enUS)
-local L = LibStub("AceLocale-3.0"):NewLocale("TradeSkillMaster_ItemTrackerDisplay", "enUS", true)
+local L = LibStub("AceLocale-3.0"):NewLocale("TradeSkillMaster_StocksDisplay", "enUS", true)
 if not L then return end
 
 L["Stocks"] = true
-L["ItemTrackerDisplay"] = true
+L["StocksDisplay"] = true
 L["Item stock display window for TradeSkillMaster."] = true
 L["Alt+Click on any item to add it to the stock display."] = true
 L["Item added to stock display: %s"] = true

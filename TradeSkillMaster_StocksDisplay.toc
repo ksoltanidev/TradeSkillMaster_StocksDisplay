@@ -1,11 +1,11 @@
 ## Interface: 30300
-## Title: |cff00ff00TradeSkillMaster_ItemTrackerDisplay|r
+## Title: |cff00ff00TradeSkillMaster_StocksDisplay|r
 ## Notes: A small window to display tracked item stocks.
 ## Author: Gemlatune
 ## Version: 1.0
 ## Dependencies: TradeSkillMaster, TradeSkillMaster_ItemTracker
-## SavedVariables: AscensionTSM_ItemTrackerDisplayDB
+## SavedVariables: AscensionTSM_StocksDisplayDB
 
 Locale\enUS.lua
 
-TradeSkillMaster_ItemTrackerDisplay.lua
+TradeSkillMaster_StocksDisplay.lua
