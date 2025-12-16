@@ -28,3 +28,8 @@ L["Move to group"] = true
 L["Remove"] = true
 L["None"] = true
 L["Right-click for options"] = true
+
+-- Export/Import
+L["Export"] = true
+L["Export Data"] = true
+L["Close"] = true

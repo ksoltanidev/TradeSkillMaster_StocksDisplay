@@ -161,6 +161,22 @@ function TSM:CreateStockWindow()
 		addGroupText:SetTextColor(1, 0.82, 0)
 	end)
 
+	-- Export button
+	local exportBtn = CreateFrame("Button", nil, header)
+	exportBtn:SetPoint("RIGHT", addGroupBtn, "LEFT", -8, 0)
+	local exportText = exportBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	exportText:SetPoint("CENTER")
+	exportText:SetText(L["Export"])
+	exportText:SetTextColor(0.5, 0.8, 1) -- Light blue
+	exportBtn:SetSize(exportText:GetStringWidth() + 4, 16)
+	exportBtn:SetScript("OnClick", function() TSM:ShowExportDialog() end)
+	exportBtn:SetScript("OnEnter", function(self)
+		exportText:SetTextColor(0.7, 0.9, 1)
+	end)
+	exportBtn:SetScript("OnLeave", function(self)
+		exportText:SetTextColor(0.5, 0.8, 1)
+	end)
+
 	-- Content frame (holds the item icons)
 	local content = CreateFrame("Frame", nil, frame)
 	content:SetPoint("TOPLEFT", header, "BOTTOMLEFT", PADDING, -PADDING)
@@ -274,6 +290,107 @@ end
 function TSM:CreateContextMenu()
 	local menu = CreateFrame("Frame", "TSMStocksDisplayContextMenu", UIParent, "UIDropDownMenuTemplate")
 	TSM.contextMenu = menu
+end
+
+function TSM:CreateExportDialog()
+	local dialog = CreateFrame("Frame", "TSMStocksDisplayExportDialog", UIParent)
+	dialog:SetSize(450, 350)
+	dialog:SetPoint("CENTER")
+	dialog:SetFrameStrata("DIALOG")
+	dialog:EnableMouse(true)
+	dialog:SetMovable(true)
+	dialog:RegisterForDrag("LeftButton")
+	dialog:SetScript("OnDragStart", dialog.StartMoving)
+	dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+	dialog:Hide()
+	TSMAPI.Design:SetFrameBackdropColor(dialog)
+
+	-- Title
+	local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	title:SetPoint("TOP", dialog, "TOP", 0, -10)
+	title:SetText(L["Export Data"])
+
+	-- Scroll frame for the text
+	local scrollFrame = CreateFrame("ScrollFrame", "TSMStocksDisplayExportScrollFrame", dialog, "UIPanelScrollFrameTemplate")
+	scrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -35)
+	scrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 45)
+
+	-- Edit box (multi-line)
+	local editBox = CreateFrame("EditBox", "TSMStocksDisplayExportEditBox", scrollFrame)
+	editBox:SetMultiLine(true)
+	editBox:SetAutoFocus(false)
+	editBox:SetFontObject(GameFontHighlightSmall)
+	editBox:SetWidth(scrollFrame:GetWidth())
+	editBox:SetScript("OnEscapePressed", function() dialog:Hide() end)
+	scrollFrame:SetScrollChild(editBox)
+	dialog.editBox = editBox
+
+	-- Close button
+	local closeBtn = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+	closeBtn:SetSize(80, 22)
+	closeBtn:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 10)
+	closeBtn:SetText(L["Close"])
+	closeBtn:SetScript("OnClick", function() dialog:Hide() end)
+
+	-- Instructions
+	local instructions = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	instructions:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
+	instructions:SetText("Ctrl+A to select all, Ctrl+C to copy")
+	instructions:SetTextColor(0.7, 0.7, 0.7)
+
+	TSM.exportDialog = dialog
+end
+
+function TSM:GenerateExportString()
+	-- Helper to extract item ID from "item:12345" format
+	local function getItemId(itemString)
+		return itemString:match("item:(%d+)") or itemString
+	end
+
+	local lines = {}
+	local ungroupedIds = {}
+
+	-- First, collect ungrouped items
+	for itemString, groupName in pairs(TSM.db.profile.trackedItems) do
+		if not groupName or groupName == "" then
+			tinsert(ungroupedIds, getItemId(itemString))
+		end
+	end
+
+	-- Line 1: ungrouped items (comma-separated IDs)
+	tinsert(lines, table.concat(ungroupedIds, ","))
+
+	-- Then one line per group: "groupName:id1,id2,id3"
+	for _, groupName in ipairs(TSM.db.profile.groups) do
+		local groupIds = {}
+		for itemString, itemGroup in pairs(TSM.db.profile.trackedItems) do
+			if itemGroup == groupName then
+				tinsert(groupIds, getItemId(itemString))
+			end
+		end
+		if #groupIds > 0 then
+			tinsert(lines, groupName .. ":" .. table.concat(groupIds, ","))
+		else
+			-- Empty group, still export it
+			tinsert(lines, groupName .. ":")
+		end
+	end
+
+	return table.concat(lines, "\n")
+end
+
+function TSM:ShowExportDialog()
+	if not TSM.exportDialog then
+		TSM:CreateExportDialog()
+	end
+
+	local exportString = TSM:GenerateExportString()
+	TSM.exportDialog.editBox:SetText(exportString)
+	TSM.exportDialog:Show()
+
+	-- Select all text for easy copying
+	TSM.exportDialog.editBox:HighlightText()
+	TSM.exportDialog.editBox:SetFocus()
 end
 
 function TSM:ShowGroupDialog()
