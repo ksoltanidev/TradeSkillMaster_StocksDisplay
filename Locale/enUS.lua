@@ -25,11 +25,37 @@ L["Group '%s' already exists."] = true
 
 -- Context menu
 L["Move to group"] = true
+L["Move to profile"] = true
 L["Remove"] = true
 L["None"] = true
+L["Root"] = true
+L["No other profiles"] = true
+L["Moved %s to profile '%s'"] = true
+L["Moved group '%s' to profile '%s'"] = true
 L["Right-click for options"] = true
+
+-- Group settings menu
+L["Rename"] = true
+L["Rename Group"] = true
+L["Group renamed to '%s'"] = true
+L["Move up"] = true
+L["Move down"] = true
+
+-- Profiles
+L["New Profile..."] = true
+L["Delete Profile..."] = true
+L["New Profile"] = true
+L["Delete Profile"] = true
+L["Profile '%s' created."] = true
+L["Profile '%s' deleted."] = true
+L["Profile '%s' already exists."] = true
+L["Switched to profile: %s"] = true
+L["Cannot delete the Default profile."] = true
 
 -- Export/Import
 L["Export"] = true
+L["Import"] = true
 L["Export Data"] = true
+L["Import Data"] = true
 L["Close"] = true
+L["Import completed."] = true
