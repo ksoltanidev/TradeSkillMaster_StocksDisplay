@@ -17,6 +17,11 @@ local GROUP_HEADER_HEIGHT = 20
 local FOOTER_HEIGHT = 20
 local PADDING = 4
 
+-- Display option constants
+local DISPLAY_OPTION_NOTHING = "nothing"
+local DISPLAY_OPTION_TOTAL_VALUE = "total_value"
+local DISPLAY_OPTION_POSSESSED_VALUE = "possessed_value"
+
 -- Default saved variables
 local savedDBDefaults = {
 	profile = {
@@ -27,6 +32,7 @@ local savedDBDefaults = {
 			["Default"] = {
 				trackedItems = {}, -- { itemString = groupName or nil }
 				groups = {}, -- { "groupName1", "groupName2", ... }
+				groupDisplayOptions = {}, -- { groupName = "nothing" | "total_value" | "possessed_value" }
 			},
 		},
 		-- Window settings (shared across display profiles)
@@ -105,6 +111,7 @@ function TSM:CreateProfile(name)
 	TSM.db.profile.displayProfiles[name] = {
 		trackedItems = {},
 		groups = {},
+		groupDisplayOptions = {},
 	}
 	TSM:Print(format(L["Profile '%s' created."], name))
 	return true
@@ -614,7 +621,7 @@ function TSM:GenerateExportString()
 	-- Line 1: ungrouped items (comma-separated IDs)
 	tinsert(lines, table.concat(ungroupedIds, ","))
 
-	-- Then one line per group: "groupName:id1,id2,id3"
+	-- Then one line per group: "groupName:id1,id2,id3#displayOption"
 	for _, groupName in ipairs(profileData.groups) do
 		local groupIds = {}
 		for itemString, itemGroup in pairs(profileData.trackedItems) do
@@ -622,12 +629,24 @@ function TSM:GenerateExportString()
 				tinsert(groupIds, getItemId(itemString))
 			end
 		end
+
+		local groupLine
 		if #groupIds > 0 then
-			tinsert(lines, groupName .. ":" .. table.concat(groupIds, ","))
+			groupLine = groupName .. ":" .. table.concat(groupIds, ",")
 		else
 			-- Empty group, still export it
-			tinsert(lines, groupName .. ":")
+			groupLine = groupName .. ":"
 		end
+
+		-- Append display option if set (format: #option)
+		if profileData.groupDisplayOptions and profileData.groupDisplayOptions[groupName] then
+			local option = profileData.groupDisplayOptions[groupName]
+			if option and option ~= DISPLAY_OPTION_NOTHING then
+				groupLine = groupLine .. "#" .. option
+			end
+		end
+
+		tinsert(lines, groupLine)
 	end
 
 	return table.concat(lines, "\n")
@@ -639,6 +658,7 @@ function TSM:ImportFromString(importString)
 	-- Clear current data
 	profileData.trackedItems = {}
 	profileData.groups = {}
+	profileData.groupDisplayOptions = {}
 
 	local lines = { strsplit("\n", importString) }
 
@@ -649,10 +669,23 @@ function TSM:ImportFromString(importString)
 			local groupName, itemIds = strsplit(":", line, 2)
 
 			if itemIds then
-				-- It's a group line: "groupName:id1,id2,id3"
+				-- It's a group line: "groupName:id1,id2,id3#displayOption"
 				groupName = groupName:trim()
 				if groupName ~= "" then
 					tinsert(profileData.groups, groupName)
+
+					-- Check for display option suffix (format: #option)
+					local displayOption = nil
+					local hashPos = strfind(itemIds, "#")
+					if hashPos then
+						displayOption = strsub(itemIds, hashPos + 1):trim()
+						itemIds = strsub(itemIds, 1, hashPos - 1)
+					end
+
+					-- Store display option if valid
+					if displayOption and (displayOption == DISPLAY_OPTION_TOTAL_VALUE or displayOption == DISPLAY_OPTION_POSSESSED_VALUE) then
+						profileData.groupDisplayOptions[groupName] = displayOption
+					end
 
 					-- Parse item IDs
 					if itemIds and itemIds ~= "" then
@@ -843,6 +876,9 @@ function TSM:ShowGroupSettingsMenu(anchorFrame, groupName)
 				CloseDropDownMenus()
 			end
 		},
+		{ text = L["Display Option"], notCheckable = true, hasArrow = true,
+			menuList = TSM:GetDisplayOptionMenuList(groupName)
+		},
 		{ text = L["Move to profile"], notCheckable = true, hasArrow = true,
 			menuList = TSM:GetGroupProfileMenuList(groupName)
 		},
@@ -867,6 +903,143 @@ function TSM:ShowGroupSettingsMenu(anchorFrame, groupName)
 	}
 
 	EasyMenu(menuList, TSM.contextMenu, anchorFrame, 0, 0, "MENU")
+end
+
+function TSM:GetDisplayOptionMenuList(groupName)
+	local profileData = TSM:GetCurrentProfileData()
+	-- Initialize groupDisplayOptions if not exists
+	if not profileData.groupDisplayOptions then
+		profileData.groupDisplayOptions = {}
+	end
+	local currentOption = profileData.groupDisplayOptions[groupName] or DISPLAY_OPTION_NOTHING
+
+	return {
+		{ text = L["Nothing"],
+			checked = (currentOption == DISPLAY_OPTION_NOTHING),
+			func = function()
+				TSM:SetGroupDisplayOption(groupName, DISPLAY_OPTION_NOTHING)
+				CloseDropDownMenus()
+			end
+		},
+		{ text = L["Total Value of List"],
+			checked = (currentOption == DISPLAY_OPTION_TOTAL_VALUE),
+			func = function()
+				TSM:SetGroupDisplayOption(groupName, DISPLAY_OPTION_TOTAL_VALUE)
+				CloseDropDownMenus()
+			end
+		},
+		{ text = L["Total Value of Possessed Items"],
+			checked = (currentOption == DISPLAY_OPTION_POSSESSED_VALUE),
+			func = function()
+				TSM:SetGroupDisplayOption(groupName, DISPLAY_OPTION_POSSESSED_VALUE)
+				CloseDropDownMenus()
+			end
+		},
+	}
+end
+
+function TSM:SetGroupDisplayOption(groupName, option)
+	local profileData = TSM:GetCurrentProfileData()
+	if not profileData.groupDisplayOptions then
+		profileData.groupDisplayOptions = {}
+	end
+	profileData.groupDisplayOptions[groupName] = option
+	TSM:RefreshDisplay()
+end
+
+-- Calculate the total market value of all items in a group (sum of market values)
+function TSM:GetGroupTotalMarketValue(groupName)
+	local profileData = TSM:GetCurrentProfileData()
+	local totalValue = 0
+
+	for itemString, itemGroup in pairs(profileData.trackedItems) do
+		if itemGroup == groupName then
+			local marketValue = TSMAPI:GetItemValue(itemString, "DBMarket")
+			if marketValue then
+				totalValue = totalValue + marketValue
+			end
+		end
+	end
+
+	return totalValue > 0 and totalValue or nil
+end
+
+-- Calculate the total value of possessed items in a group (market value * quantity)
+function TSM:GetGroupPossessedValue(groupName)
+	local profileData = TSM:GetCurrentProfileData()
+	local ItemTracker = LibStub("AceAddon-3.0"):GetAddon("TSM_ItemTracker", true)
+	if not ItemTracker then return nil end
+
+	local totalValue = 0
+
+	for itemString, itemGroup in pairs(profileData.trackedItems) do
+		if itemGroup == groupName then
+			local marketValue = TSMAPI:GetItemValue(itemString, "DBMarket")
+			if marketValue then
+				-- Get stock count from ItemTracker (same as in SetupItemButton)
+				local playerTotal, altTotal = ItemTracker:GetPlayerTotal(itemString)
+				local guildTotal = ItemTracker:GetGuildTotal(itemString) or 0
+				local auctionTotal = ItemTracker:GetAuctionsTotal(itemString) or 0
+				local personalBanksTotal = ItemTracker:GetPersonalBanksTotal(itemString) or 0
+				local realmBankTotal = ItemTracker:GetRealmBankTotal(itemString) or 0
+				local quantity = (playerTotal or 0) + (altTotal or 0) + guildTotal + auctionTotal + personalBanksTotal + realmBankTotal
+
+				if quantity > 0 then
+					totalValue = totalValue + (marketValue * quantity)
+				end
+			end
+		end
+	end
+
+	return totalValue > 0 and totalValue or nil
+end
+
+-- Format gold value for display (shorter format for header)
+function TSM:FormatGoldShort(value)
+	if not value or value == 0 then return nil end
+
+	local gold = math.floor(value / 10000)
+	local silver = math.floor((value % 10000) / 100)
+
+	if gold >= 1000 then
+		-- Show as "1.2k" for thousands
+		local thousands = gold / 1000
+		if thousands >= 10 then
+			return format("%dk", math.floor(thousands))
+		else
+			return format("%.1fk", thousands)
+		end
+	elseif gold > 0 then
+		return format("%dg", gold)
+	elseif silver > 0 then
+		return format("%ds", silver)
+	else
+		return format("%dc", value % 100)
+	end
+end
+
+-- Get the display value text for a group based on its display option
+function TSM:GetGroupDisplayValueText(groupName)
+	local profileData = TSM:GetCurrentProfileData()
+	if not profileData.groupDisplayOptions then return nil end
+
+	local option = profileData.groupDisplayOptions[groupName]
+	if not option or option == DISPLAY_OPTION_NOTHING then
+		return nil
+	end
+
+	local value
+	if option == DISPLAY_OPTION_TOTAL_VALUE then
+		value = TSM:GetGroupTotalMarketValue(groupName)
+	elseif option == DISPLAY_OPTION_POSSESSED_VALUE then
+		value = TSM:GetGroupPossessedValue(groupName)
+	end
+
+	if value then
+		return TSM:FormatGoldShort(value)
+	end
+
+	return nil
 end
 
 function TSM:GetGroupProfileMenuList(groupName)
@@ -931,6 +1104,15 @@ function TSM:MoveGroupToProfile(groupName, targetProfileName)
 			tremove(currentProfileData.groups, i)
 			break
 		end
+	end
+
+	-- Transfer display option to target profile
+	if currentProfileData.groupDisplayOptions and currentProfileData.groupDisplayOptions[groupName] then
+		if not targetProfileData.groupDisplayOptions then
+			targetProfileData.groupDisplayOptions = {}
+		end
+		targetProfileData.groupDisplayOptions[groupName] = currentProfileData.groupDisplayOptions[groupName]
+		currentProfileData.groupDisplayOptions[groupName] = nil
 	end
 
 	TSM:Print(format(L["Moved group '%s' to profile '%s'"], groupName, targetProfileName))
@@ -1029,6 +1211,12 @@ function TSM:RenameGroup(oldName, newName)
 		if itemGroup == oldName then
 			profileData.trackedItems[itemString] = newName
 		end
+	end
+
+	-- Transfer display option to new name
+	if profileData.groupDisplayOptions and profileData.groupDisplayOptions[oldName] then
+		profileData.groupDisplayOptions[newName] = profileData.groupDisplayOptions[oldName]
+		profileData.groupDisplayOptions[oldName] = nil
 	end
 
 	-- Clear cached header for old name so it gets recreated
@@ -1186,6 +1374,11 @@ function TSM:DeleteGroup(name)
 		if group == name then
 			profileData.trackedItems[itemString] = ""
 		end
+	end
+
+	-- Clean up display option
+	if profileData.groupDisplayOptions then
+		profileData.groupDisplayOptions[name] = nil
 	end
 
 	TSM:Print(format(L["Group '%s' deleted."], name))
@@ -1411,10 +1604,32 @@ function TSM:GetOrCreateGroupHeader(groupName)
 			settingsIcon:SetVertexColor(0.7, 0.7, 0.7)
 		end)
 
+		-- Value display text (to the left of settings button)
+		local valueText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		valueText:SetPoint("RIGHT", settingsBtn, "LEFT", -6, 0)
+		valueText:SetTextColor(1, 1, 1) -- White
+		header.valueText = valueText
+
 		frame.groupHeaders[groupName] = header
 	end
 
+	-- Update the value text every time the header is retrieved
+	TSM:UpdateGroupHeaderValue(header, groupName)
+
 	return header
+end
+
+function TSM:UpdateGroupHeaderValue(header, groupName)
+	if not header or not header.valueText then return end
+
+	local valueText = TSM:GetGroupDisplayValueText(groupName)
+	if valueText then
+		header.valueText:SetText(valueText)
+		header.valueText:Show()
+	else
+		header.valueText:SetText("")
+		header.valueText:Hide()
+	end
 end
 
 function TSM:MoveGroupUp(groupName)

@@ -38,6 +38,10 @@ L["Right-click for options"] = true
 L["Rename"] = true
 L["Rename Group"] = true
 L["Group renamed to '%s'"] = true
+L["Display Option"] = true
+L["Nothing"] = true
+L["Total Value of List"] = true
+L["Total Value of Possessed Items"] = true
 L["Move up"] = true
 L["Move down"] = true
 
